@@ -16,5 +16,6 @@ Then open http://localhost:8000
 ## Notes
 
 - Every line the coach speaks must have a clip listed in the `CLIP` map in `index.html`. New or reworded lines need new recordings.
+- Run `python3 scripts/check_clips.py` to confirm every clip is on disk, in `CLIP`, and cached in `sw.js`.
 - After changing any file, bump `CACHE` in `sw.js` so phones pick up the update.
 - Host on any static host (GitHub Pages, Netlify, Cloudflare Pages).
