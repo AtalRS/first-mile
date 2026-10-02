@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Mile – Start running</title>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="First Mile">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#13293D">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#EEF3F6;--ink:#13293D;--mute:#5B6B7A;--card:#fff;--line:#D5DEE5;--run:#13293D;--walk:#F2B84B;--on-run:#fff;--on-walk:#13293D;--calm:#9ED8C6;--on-calm:#13293D;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0D1822;--ink:#EAF1F6;--mute:#93A4B3;--card:#16283A;--line:#26405A;--run:#5AA9FF;--walk:#F2B84B;--on-run:#0D1822;--on-walk:#13293D;--calm:#2E8B79;--on-calm:#fff}}
+:root[data-theme="dark"]{--bg:#0D1822;--ink:#EAF1F6;--mute:#93A4B3;--card:#16283A;--line:#26405A;--run:#5AA9FF;--walk:#F2B84B;--on-run:#0D1822;--on-walk:#13293D;--calm:#2E8B79;--on-calm:#fff}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,sans-serif;line-height:1.4}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:34px;line-height:1.05;margin:8px 0 6px;font-weight:800;letter-spacing:-.02em}
+p.sub{margin:0 0 18px;color:var(--mute)}
+.weeks{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+.wk{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+.wk[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.wk small{display:block;font-weight:400;font-size:11px;opacity:.7}
+h2{font-size:20px;margin:14px 0 4px}
+.goal{color:var(--mute);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.day{font-weight:800;font-size:18px}
+.meta{color:var(--mute);font-size:14px}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:12px 0;gap:2px}
+.bar i{display:block;height:100%}
+.bar .run{background:var(--run)}.bar .walk{background:var(--walk)}.bar .stretch{background:var(--calm)}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--mute);margin:0 0 6px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+button.go{width:100%;border:0;border-radius:12px;padding:13px;font:inherit;font-weight:800;font-size:16px;background:var(--run);color:var(--on-run);cursor:pointer}
+button.done{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button:focus-visible{outline:3px solid var(--walk);outline-offset:2px}
+.tip{background:transparent;border:1px dashed var(--line);border-radius:14px;padding:12px 14px;color:var(--mute);font-size:14px}
+.prog{font-size:14px;color:var(--mute);margin-bottom:10px}
+/* guided */
+#guide{position:fixed;inset:0;z-index:10;display:none;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;transition:background .3s}
+#guide.on{display:flex}
+#guide.run{background:var(--run);color:var(--on-run)}
+#guide.walk{background:var(--walk);color:var(--on-walk)}
+#guide.fin{background:var(--bg);color:var(--ink)}
+.phase{font-size:56px;font-weight:800;letter-spacing:-.03em;margin:0}
+.ringwrap{position:relative;width:min(72vw,300px);aspect-ratio:1}
+.ringwrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ringwrap .t{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.big{font-size:64px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.next{font-size:15px;opacity:.85;min-height:22px}
+.ctrls{display:flex;gap:10px;width:100%;max-width:420px}
+.ctrls button{flex:1;border:2px solid currentColor;background:transparent;color:inherit;border-radius:14px;padding:14px 6px;font:inherit;font-weight:800;font-size:16px;cursor:pointer}
+.ctrls button.main{background:currentColor}
+.ctrls button.main span{color:var(--mainfg)}
+#guide.run{--mainfg:var(--run)}#guide.walk{--mainfg:var(--walk)}
+.gbar{display:flex;gap:2px;height:8px;width:100%;max-width:420px}
+.gbar i{flex:1;background:currentColor;opacity:.25;border-radius:4px}
+.gbar i.d{opacity:1}.gbar i.c{opacity:.7;outline:2px solid currentColor;outline-offset:1px}
+.fin .ctrls button{border-color:var(--ink)}
+.fin .ctrls button.main{background:var(--run);border-color:var(--run)}
+.fin .ctrls button.main span{color:var(--on-run)}
+#guide.stretch{background:var(--calm);color:var(--on-calm);--mainfg:var(--calm)}
+.coach{font-size:18px;font-weight:600;min-height:50px;max-width:340px;margin:10px auto 0}
+.mute{margin-top:6px;border:1.5px solid currentColor;background:transparent;color:inherit;border-radius:20px;padding:6px 14px;font:inherit;font-size:14px;cursor:pointer}
+#guide.fin .mute,#guide.fin .coach{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <h1>First Mile</h1>
+  <p class="sub">The Couch to 5K 9-week programme. Three runs a week with a rest day between, each one guided.</p>
+  <div class="card"><div class="row"><div><div class="day" style="font-size:16px">Voice coach</div><div class="meta">Coach Hannah guides your breathing and cheers you on</div></div><button class="wk" id="ctog" aria-pressed="true"></button></div><button class="go done" id="ctest" style="margin-top:10px">Hear your coach</button></div>
+  <div class="prog" id="prog"></div>
+  <div class="weeks" id="weeks" role="group" aria-label="Weeks"></div>
+  <h2 id="wt"></h2>
+  <p class="goal" id="wg"></p>
+  <div class="legend"><span><b style="background:var(--run)"></b>Run</span><span><b style="background:var(--walk)"></b>Walk</span><span><b style="background:var(--calm)"></b>Stretch</span></div>
+  <div id="list"></div>
+  <div class="tip">Take a rest day between runs. Run at a pace where you could still talk, and stretch after cooling down.</div>
+</main>
+
+<section id="guide" aria-live="polite">
+  <div class="gbar" id="gbar"></div>
+  <div>
+    <p class="phase" id="gphase"></p>
+    <div class="next" id="gnext"></div>
+    <div class="coach" id="gcoach"></div>
+    <button class="mute" id="gmute"></button>
+  </div>
+  <div class="ringwrap">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="6"/><circle id="ring" cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-dasharray="282.7" stroke-dashoffset="0"/></svg>
+    <div class="t"><div class="big" id="gtime">0:00</div><div class="meta" id="gleft" style="color:inherit;opacity:.8"></div></div>
+  </div>
+  <div class="ctrls" id="gctrls"></div>
+</section>
+
+<script>
+function rep(r,w,n){var a=[];for(var i=0;i<n;i++){a.push(r,w)}a.push(r);return a}
+var W1=rep(60,90,7),W2=rep(90,120,5),W3=[90,90,180,180,90,90,180],W4=[180,90,300,150,180,90,300];
+var WEEKS=[
+ {g:"Short runs, long recoveries. Go slowly.",w:[W1,W1,W1]},
+ {g:"Runs get a little longer.",w:[W2,W2,W2]},
+ {g:"Your first three-minute runs.",w:[W3,W3,W3]},
+ {g:"Five-minute runs arrive.",w:[W4,W4,W4]},
+ {g:"Three different workouts. Run 3 is 20 minutes non-stop.",w:[[300,180,300,180,300],[480,300,480],[1200]]},
+ {g:"Longer runs, fewer breaks.",w:[[300,180,480,180,300],[600,180,600],[1500]]},
+ {g:"25 minutes of running, three times.",w:[[1500],[1500],[1500]]},
+ {g:"28 minutes. Almost there.",w:[[1680],[1680],[1680]]},
+ {g:"Today is the day. 30 minutes to the finish line.",w:[[1800],[1800],[1800]]}
+];
+var DAYS=["Mon","Wed","Sat"];
+var WU=[["Ankle circles","Lift one foot and draw slow circles with your toes. Switch feet halfway.",1],["Leg swings","Hold onto something steady and swing one leg forward and back. Switch halfway.",1],["Hip circles","Hands on your hips. Draw big, slow circles.",0],["Marching","March on the spot, lifting your knees and swinging your arms.",0],["Calf raises","Rise up onto your toes, then lower slowly.",0],["Shoulder rolls","Roll your shoulders back, then forward. Keep your neck loose.",0]];
+var CD=[["Quad stretch","Hold your ankle and gently pull your heel toward your bottom. Switch halfway.",1],["Hamstring stretch","Place one heel forward, toes up, and hinge at the hips. Switch halfway.",1],["Calf stretch","Hands on a wall, one leg back with the heel down. Switch halfway.",1],["Hip flexor stretch","Step into a gentle lunge and tuck your hips under. Switch halfway.",1],["Deep breathing","Stand tall. Breathe in for four, and out for six.",0]];
+function st(x){return {t:"stretch",d:x[2]?40:30,l:x[0],tip:x[1],sw:x[2]}}
+function build(i,d){var a=WEEKS[i].w[d],s=[];
+ WU.forEach(function(x){s.push(st(x))});
+ s.push({t:"walk",d:300,l:"Warm-up walk"});
+ a.forEach(function(x,k){var run=k%2===0;s.push({t:run?"run":"walk",d:x,l:run?(k===a.length-1&&a.length>1?"Final run":"Run"):"Walk"})});
+ s.push({t:"walk",d:300,l:"Cool-down walk"});
+ CD.forEach(function(x,k){var e=st(x);if(!k)e.first="Now for some cool-down stretches.";s.push(e)});return s}
+function fmt(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
+function mins(s){return Math.round(s.reduce(function(a,x){return a+x.d},0)/60)}
+var done={};
+try{done=JSON.parse(localStorage.getItem("fm-done2")||"{}")}catch(e){done={}}
+function save(){try{localStorage.setItem("fm-done2",JSON.stringify(done))}catch(e){}}
+function count(){return Object.keys(done).length}
+var cur=0;
+(function(){for(var w=0;w<9;w++){for(var d=0;d<3;d++){if(!done[w+"-"+d]){cur=w;return}}}cur=8})();
+
+function render(){
+  document.getElementById("prog").textContent=count()+" of 27 workouts done";
+  var wk=document.getElementById("weeks");wk.innerHTML="";
+  WEEKS.forEach(function(W,i){var b=document.createElement("button");b.className="wk";b.setAttribute("aria-pressed",i===cur);
+    var c=0;for(var d=0;d<3;d++)if(done[i+"-"+d])c++;
+    b.innerHTML="Week "+(i+1)+"<small>"+c+"/3 done</small>";b.onclick=function(){cur=i;render()};wk.appendChild(b)});
+  document.getElementById("wt").textContent="Week "+(cur+1);
+  document.getElementById("wg").textContent=WEEKS[cur].g;
+  var list=document.getElementById("list");list.innerHTML="";
+  DAYS.forEach(function(day,d){
+    var segs=build(cur,d),a=WEEKS[cur].w[d],runs=Math.ceil(a.length/2),isDone=!!done[cur+"-"+d],c=document.createElement("div");c.className="card";
+    var desc=runs===1?"One run of "+fmt(a[0]):runs+" runs, "+fmt(Math.max.apply(null,a.filter(function(x,k){return k%2===0})))+" at longest";
+    var bar=segs.map(function(s){return '<i class="'+s.t+'" style="flex:'+s.d+'"></i>'}).join("");
+    c.innerHTML='<div class="row"><span class="day">Run '+(d+1)+'</span><span class="meta">'+(isDone?"Done":day+" · "+mins(segs)+" min")+'</span></div>'+
+      '<div class="meta">'+desc+'</div><div class="bar" aria-hidden="true">'+bar+'</div>';
+    var b=document.createElement("button");b.className="go"+(isDone?" done":"");
+    b.textContent=isDone?"Do it again":"Start workout";b.onclick=function(){start(cur,d)};c.appendChild(b);list.appendChild(c)});
+}
+
+/* guided workout */
+var G=null,tick=null,actx=null;
+function beep(f,n){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  for(var i=0;i<n;i++){var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);
+  var t=actx.currentTime+i*.22;g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.start(t);o.stop(t+.18)}}catch(e){}}
+var coachOn=true,bi=0,mi=0;
+try{coachOn=localStorage.getItem("fm-coach")!=="off"}catch(e){}
+var CLIP={"Find your rhythm. Breathe in for two steps, and out for two steps.":"coach/d40e81e254.mp3","In through your nose, out through your mouth. Nice and steady.":"coach/04431da523.mp3","Breathe deep into your belly. In, two, three. Out, two, three.":"coach/ccf23f278e.mp3","Relax your shoulders, unclench your hands, and let the breath flow.":"coach/2609492e51.mp3","Slow your breathing down. In... and out.":"coach/ed800c73be.mp3","Take a deep breath in through your nose, and let it out slowly.":"coach/c799ffd0eb.mp3","Let your heart rate settle. In for four, out for six.":"coach/b9adbec44a.mp3","Breathe in... and out. Shake out your arms.":"coach/a38664bf07.mp3","Big breath in, and slowly out. Feel your body recover.":"coach/ad9bbd50ca.mp3","You're doing great. Keep it easy.":"coach/2728115fa1.mp3","Strong and steady. Every step counts.":"coach/2e5c061e3d.mp3","Look at you go. You've got this.":"coach/6a436c631b.mp3","Stay tall and light on your feet.":"coach/6645d2e9da.mp3","Remember how far you've come. Keep going.":"coach/ab480df215.mp3","You can do hard things. One more step, and then another.":"coach/9d914bb3fd.mp3","Well done. You earned this rest.":"coach/76ede55747.mp3","That was great work. Stay relaxed.":"coach/45d452785c.mp3","You're stronger than you think. Get ready for the next run.":"coach/92657958b6.mp3","Proud of you. Keep moving, keep smiling.":"coach/5b9ef5c8d9.mp3","Switch sides.":"coach/af7a9284b4.mp3","One minute to go. Stay relaxed and finish strong.":"coach/1f1d150ec2.mp3","Hi, I'm your running coach. We've got this, one step at a time.":"coach/afefba9cb2.mp3","Hi, I'm your running coach. Breathe in through your nose, and out through your mouth. I'll be with you every step. You've got this.":"coach/104e56e0f0.mp3","Hi, I'm your coach. Let's warm up with some gentle movement. Ankle circles. Lift one foot and draw slow circles with your toes. Switch feet halfway.":"coach/553008953e.mp3","Leg swings. Hold onto something steady and swing one leg forward and back. Switch halfway.":"coach/304ddc5130.mp3","Hip circles. Hands on your hips. Draw big, slow circles.":"coach/999dfd635e.mp3","Marching. March on the spot, lifting your knees and swinging your arms.":"coach/c41b7817f3.mp3","Calf raises. Rise up onto your toes, then lower slowly.":"coach/fe01a6ca79.mp3","Shoulder rolls. Roll your shoulders back, then forward. Keep your neck loose.":"coach/63645195a2.mp3","Now a five minute warm-up walk. Start gently and build to a brisk pace.":"coach/8a9413caa0.mp3","Run for 60 seconds. Easy pace.":"coach/3bd7aee126.mp3","Walk for 90 seconds. Catch your breath.":"coach/536bf11eee.mp3","Walk for 90 seconds. Catch your breath. You're halfway through today's workout.":"coach/9213355150.mp3","Final run. 60 seconds. Give it everything you've got, you're almost done.":"coach/e48842d0f2.mp3","Amazing work. Cool down with a walk, and breathe slowly.":"coach/cfdf32ee46.mp3","Now for some cool-down stretches. Quad stretch. Hold your ankle and gently pull your heel toward your bottom. Switch halfway.":"coach/ca03afebe6.mp3","Hamstring stretch. Place one heel forward, toes up, and hinge at the hips. Switch halfway.":"coach/564ea351b1.mp3","Calf stretch. Hands on a wall, one leg back with the heel down. Switch halfway.":"coach/eeaea0709b.mp3","Hip flexor stretch. Step into a gentle lunge and tuck your hips under. Switch halfway.":"coach/4a4ab48577.mp3","Deep breathing. Stand tall. Breathe in for four, and out for six.":"coach/f5aa94523d.mp3","Workout complete. You did it, and I'm so proud of you. Take a deep breath in, and slowly out. Grab some water, you earned it.":"coach/d52323a263.mp3","Run for 90 seconds. Easy pace.":"coach/a52e0bbbf1.mp3","Walk for 2 minutes. Catch your breath.":"coach/9e239fe3c2.mp3","Walk for 2 minutes. Catch your breath. You're halfway through today's workout.":"coach/3ee54991ce.mp3","Final run. 90 seconds. Give it everything you've got, you're almost done.":"coach/d314dbe8f7.mp3","Run for 3 minutes. Easy pace.":"coach/bb0b82b518.mp3","Walk for 3 minutes. Catch your breath. You're halfway through today's workout.":"coach/d5c708f56a.mp3","Final run. 3 minutes. Give it everything you've got, you're almost done.":"coach/39eae6ac98.mp3","Run for 5 minutes. Easy pace.":"coach/5ac60d7fdf.mp3","Walk for 2.5 minutes. Catch your breath. You're halfway through today's workout.":"coach/7d06c10488.mp3","Final run. 5 minutes. Give it everything you've got, you're almost done.":"coach/3c5a2e31ab.mp3","Walk for 3 minutes. Catch your breath.":"coach/1f9166a29a.mp3","Run for 5 minutes. Easy pace. You're halfway through today's workout.":"coach/c336a1dc5c.mp3","Run for 8 minutes. Easy pace.":"coach/7ad3934169.mp3","Walk for 5 minutes. Catch your breath. You're halfway through today's workout.":"coach/0721d621ab.mp3","Final run. 8 minutes. Give it everything you've got, you're almost done.":"coach/91d06dc678.mp3","Run for 20 minutes. Easy pace. You're halfway through today's workout.":"coach/3bd9b60b0d.mp3","Run for 8 minutes. Easy pace. You're halfway through today's workout.":"coach/d89a40eeb5.mp3","Run for 10 minutes. Easy pace.":"coach/cad579ad43.mp3","Final run. 10 minutes. Give it everything you've got, you're almost done.":"coach/f6b13be1cb.mp3","Run for 25 minutes. Easy pace. You're halfway through today's workout.":"coach/2bff4e964f.mp3","Run for 28 minutes. Easy pace. You're halfway through today's workout.":"coach/735546faf5.mp3","Run for 30 minutes. Easy pace. You're halfway through today's workout.":"coach/92bb02ab83.mp3"};
+var aud=new Audio();aud.preload="auto";
+function hush(){try{aud.pause()}catch(e){}}
+function busy(){return !aud.paused&&!aud.ended}
+function say(t,soft,force){if(!coachOn&&!force)return false;
+ if(soft&&busy())return false;
+ var c=document.getElementById("gcoach");if(c)c.textContent=t;hush();
+ if(CLIP[t]){aud.src=CLIP[t];var pr=aud.play();if(pr&&pr.catch)pr.catch(function(){})}
+ return true}
+var BREATH_RUN=["Find your rhythm. Breathe in for two steps, and out for two steps.","In through your nose, out through your mouth. Nice and steady.","Breathe deep into your belly. In, two, three. Out, two, three.","Relax your shoulders, unclench your hands, and let the breath flow.","Slow your breathing down. In... and out."];
+var BREATH_WALK=["Take a deep breath in through your nose, and let it out slowly.","Let your heart rate settle. In for four, out for six.","Breathe in... and out. Shake out your arms.","Big breath in, and slowly out. Feel your body recover."];
+var MOTIV_RUN=["You're doing great. Keep it easy.","Strong and steady. Every step counts.","Look at you go. You've got this.","Stay tall and light on your feet.","Remember how far you've come. Keep going.","You can do hard things. One more step, and then another."];
+var MOTIV_WALK=["Well done. You earned this rest.","That was great work. Stay relaxed.","You're stronger than you think. Get ready for the next run.","Proud of you. Keep moving, keep smiling."];
+function coach(){var s=G.segs[G.i],el=s.d-G.left,run=s.t==="run";
+ if(s.t==="stretch"){if(s.sw&&G.swI!==G.i&&el>=s.d/2){if(say("Switch sides.",1))G.swI=G.i}return}
+ if(run&&s.d>=120&&G.left<=60&&G.left>45&&G.l60!==G.i){if(say("One minute to go. Stay relaxed and finish strong.",1))G.l60=G.i;return}
+ if(el>=G.cueAt&&G.left>15){var m=G.cueN%2===0?(run?BREATH_RUN:BREATH_WALK)[bi++%(run?5:4)]:(run?MOTIV_RUN:MOTIV_WALK)[mi++%(run?6:4)];
+  if(say(m,1)){G.cueN++;G.cueAt=el+(run?35:40)}}}
+function updCoach(){var t=document.getElementById("ctog"),m=document.getElementById("gmute");
+ if(t){t.textContent=coachOn?"On":"Off";t.setAttribute("aria-pressed",coachOn)}
+ if(m)m.textContent=coachOn?"Mute coach":"Unmute coach"}
+function setCoach(v){coachOn=v;try{localStorage.setItem("fm-coach",v?"on":"off")}catch(e){}
+ if(!v){hush();var c=document.getElementById("gcoach");if(c)c.textContent=""}updCoach()}
+document.getElementById("ctog").onclick=function(){setCoach(!coachOn)};
+document.getElementById("ctest").onclick=function(){say("Hi, I'm your running coach. Breathe in through your nose, and out through your mouth. I'll be with you every step. You've got this.",0,1)};
+function buzz(){try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}
+function start(w,d){
+  G={w:w,d:d,segs:build(w,d),cueAt:25,cueN:0,i:0,left:0,paused:false,last:Date.now(),key:w+"-"+d};
+  G.left=G.segs[0].d;document.getElementById("guide").classList.add("on");
+  beep(660,1);say("Hi, I'm your coach. Let's warm up with some gentle movement. "+G.segs[0].l+". "+G.segs[0].tip);
+  var gb=document.getElementById("gbar");gb.innerHTML=G.segs.map(function(){return "<i></i>"}).join("");
+  controls();updCoach();document.getElementById("gmute").onclick=function(){setCoach(!coachOn)};clearInterval(tick);tick=setInterval(step,250);show()}
+function step(){if(!G||G.paused||G.fin)return;var n=Date.now();G.left-=(n-G.last)/1000;G.last=n;
+  if(G.left<=0){advance()}else{coach();var s=Math.ceil(G.left);if(s<=3&&s!==G.lastBeep&&G.segs[G.i].d>8){G.lastBeep=s;beep(520,1)}}show()}
+function advance(){G.i++;G.lastBeep=0;
+  if(G.i>=G.segs.length){finish();return}
+  var s=G.segs[G.i];G.left=s.d;G.last=Date.now();
+  beep(s.t==="run"?880:440,2);buzz();
+  var m=s.t==="stretch"?(s.first?s.first+" ":"")+s.l+". "+s.tip:s.l==="Warm-up walk"?"Now a five minute warm-up walk. Start gently and build to a brisk pace.":s.t==="run"?"Run for "+spoken(s.d)+". Easy pace.":s.l==="Cool-down walk"?"Amazing work. Cool down with a walk, and breathe slowly.":"Walk for "+spoken(s.d)+". Catch your breath.";
+  if(s.l==="Final run")m="Final run. "+spoken(s.d)+". Give it everything you've got, you're almost done.";
+  if(G.i===Math.floor(G.segs.length/2))m+=" You're halfway through today's workout.";
+  say(m);G.cueAt=12;G.cueN=0}
+function spoken(d){var m=Math.round(d/60*2)/2;return d<120?d+" seconds":(m%1?m:Math.round(m))+" minutes"}
+function show(){var g=document.getElementById("guide"),s=G.segs[G.i];
+  g.className="on "+s.t;
+  var ph=document.getElementById("gphase");ph.textContent=s.t==="run"?"Run":s.t==="walk"?"Walk":s.l;ph.style.fontSize=s.t==="stretch"?"38px":"";
+  document.getElementById("gtime").textContent=fmt(G.left);
+  var rem=G.left;for(var k=G.i+1;k<G.segs.length;k++)rem+=G.segs[k].d;
+  document.getElementById("gleft").textContent=fmt(rem)+" total left";
+  document.getElementById("ring").setAttribute("stroke-dashoffset",(282.7*(1-G.left/s.d)).toFixed(1));
+  var nx=G.segs[G.i+1];document.getElementById("gnext").textContent=nx?"Next: "+nx.l.toLowerCase()+" for "+fmt(nx.d):"Last stretch";
+  var bars=document.getElementById("gbar").children;for(var j=0;j<bars.length;j++)bars[j].className=j<G.i?"d":j===G.i?"c":""}
+function controls(){var c=document.getElementById("gctrls");
+  c.innerHTML='<button id="bq">End</button><button id="bp" class="main"><span>Pause</span></button><button id="bs">Skip</button>';
+  document.getElementById("bq").onclick=quit;
+  document.getElementById("bs").onclick=function(){advance();if(G&&!G.fin)show()};
+  document.getElementById("bp").onclick=function(){G.paused=!G.paused;G.last=Date.now();if(G.paused)hush();this.firstChild.textContent=G.paused?"Resume":"Pause"}}
+function finish(){G.fin=true;clearInterval(tick);beep(880,3);buzz();say("Workout complete. You did it, and I'm so proud of you. Take a deep breath in, and slowly out. Grab some water, you earned it.");
+  var g=document.getElementById("guide");g.className="on fin";
+  document.getElementById("gbar").innerHTML="";
+  document.getElementById("gphase").textContent="Done";
+  document.getElementById("gtime").textContent=mins(G.segs)+" min";
+  document.getElementById("gleft").textContent="";
+  document.getElementById("gnext").textContent="Week "+(G.w+1)+" workout finished";
+  document.getElementById("ring").setAttribute("stroke-dashoffset","0");
+  var c=document.getElementById("gctrls");
+  c.innerHTML='<button id="bq">Close</button><button id="bd" class="main"><span>Mark complete</span></button>';
+  document.getElementById("bq").onclick=quit;
+  document.getElementById("bd").onclick=function(){done[G.key]=1;save();
+    if(count()>0){var all=true;for(var d=0;d<3;d++)if(!done[G.w+"-"+d])all=false;if(all&&G.w<8)cur=G.w+1}
+    quit()}}
+function quit(){clearInterval(tick);hush();G=null;
+  document.getElementById("guide").className="";render()}
+render();updCoach();
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+</script>
+</body>
+</html>
