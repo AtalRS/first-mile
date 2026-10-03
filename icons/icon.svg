@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Source for all app icons. Rebuild PNGs with: swift scripts/make_icons.swift -->
+  <rect width="1024" height="1024" fill="#13293D"/>
+  <g stroke="#9ED8C6" stroke-width="44" stroke-linecap="round">
+    <path d="M170 420 H330"/><path d="M110 530 H300"/><path d="M190 640 H320"/>
+  </g>
+  <g transform="translate(318 214)" stroke="#F2B84B" stroke-width="72" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="336" cy="62" r="64" fill="#F2B84B" stroke="none"/>
+    <path d="M296 178 L216 346"/>
+    <path d="M290 196 L392 258 L458 196"/>
+    <path d="M290 196 L192 252 L120 214"/>
+    <path d="M216 346 L352 396 L318 528"/>
+    <path d="M216 346 L158 476 L52 412"/>
+  </g>
+</svg>
