@@ -1,0 +1,9 @@
+{
+  "appId": "com.atalrs.firstmile",
+  "appName": "First Mile",
+  "webDir": "www",
+  "backgroundColor": "#13293D",
+  "ios": {
+    "contentInset": "never"
+  }
+}
