@@ -49,7 +49,7 @@ Then open http://localhost:8000
 
 ## iPhone app
 
-The same `index.html` runs as a native iOS app via [Capacitor](https://capacitorjs.com). In the app, the page works out the workout's timeline of coach lines and beeps and hands it to native code (`native/ios/AppDelegate.swift`), which plays them on time with the screen locked and lowers the runner's music only while the coach speaks.
+The same `index.html` runs as a native iOS app via [Capacitor](https://capacitorjs.com). In the app, the page works out the workout's timeline of coach lines and beeps and hands it to native code (`native/ios/AppDelegate.swift`), which plays them on time with the screen locked and lowers the runner's music only while the coach speaks. The workout keeps going when the runner switches apps or takes a phone call: after the call the coach picks up again and repeats the run/walk change they missed, and if iOS reloads or closes the app in the background, the workout in progress is restored when it's opened again.
 
 Needs Node.js and Xcode. First time:
 
