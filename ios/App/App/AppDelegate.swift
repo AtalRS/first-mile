@@ -243,13 +243,11 @@ final class CoachAudio: NSObject, AVAudioPlayerDelegate {
     @objc private func interruption(_ note: Notification) {
         guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
-        let reason = (note.userInfo?[AVAudioSessionInterruptionReasonKey] as? UInt).flatMap(AVAudioSession.InterruptionReason.init)
         DispatchQueue.main.async {
             guard self.timer != nil else { return }
-            // A late notice that the app was suspended isn't a call: tick() just restarts the audio.
-            if type == .began && reason != .appWasSuspended {
+            if type == .began {
                 self.interrupted = true
-            } else if type == .ended {
+            } else {
                 self.interrupted = false
                 self.retryAt = 0
                 self.tick()
