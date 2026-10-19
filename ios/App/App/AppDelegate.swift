@@ -63,6 +63,8 @@ struct CoachEvent {
     var clip: String?
     var tone: Double?
     var count = 1
+    /// The run/walk change (or finish) at the start of a segment, said late if it was missed.
+    var key = false
 
     init(at: TimeInterval, clip: String) {
         self.at = at
@@ -75,6 +77,7 @@ struct CoachEvent {
         clip = o["clip"] as? String
         tone = number(o["tone"])
         count = Int(number(o["count"]) ?? 1)
+        key = o["key"] as? Bool ?? false
     }
 }
 
@@ -87,7 +90,8 @@ private func number(_ v: JSValue?) -> Double? {
 
 /// Plays the scheduled clips and beeps. A silent loop keeps the app running in the background
 /// (UIBackgroundModes audio) while mixing with the runner's music; the music is lowered only
-/// while the coach is speaking.
+/// while the coach is speaking. After a phone call (or anything else that takes the audio) the
+/// loop is restarted and the coach says the run/walk change the runner missed.
 final class CoachAudio: NSObject, AVAudioPlayerDelegate {
     private let session = AVAudioSession.sharedInstance()
     private var events: [CoachEvent] = []
@@ -98,12 +102,20 @@ final class CoachAudio: NSObject, AVAudioPlayerDelegate {
     private var toneData: [String: Data] = [:]
     private var ducked = false
     private var quietSince: TimeInterval = 0
-    /// Cues that come due this late (e.g. after a phone call) are dropped rather than played.
+    /// Cues that come due this late are dropped rather than played, except the latest key one.
     private let maxLate: TimeInterval = 3
+    /// A phone call or similar has the audio; wait for it to end (or for the app to be opened).
+    private var interrupted = false
+    private var retryAt: TimeInterval = 0
+    /// The latest key cue that came due while the coach couldn't play, said once it can.
+    private var missed: [CoachEvent] = []
 
     override init() {
         super.init()
-        NotificationCenter.default.addObserver(self, selector: #selector(interrupted(_:)), name: AVAudioSession.interruptionNotification, object: session)
+        let nc = NotificationCenter.default
+        nc.addObserver(self, selector: #selector(interruption(_:)), name: AVAudioSession.interruptionNotification, object: session)
+        nc.addObserver(self, selector: #selector(mediaReset), name: AVAudioSession.mediaServicesWereResetNotification, object: session)
+        nc.addObserver(self, selector: #selector(becameActive), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
     /// Replaces the timeline. Stops whatever the coach is saying; the new timeline starts with
@@ -112,14 +124,11 @@ final class CoachAudio: NSObject, AVAudioPlayerDelegate {
         voice?.stop()
         voice = nil
         events = new.sorted { $0.at < $1.at }
+        missed = []
         guard !events.isEmpty else { return stop() }
         if timer == nil {
-            startSession()
-            if silence == nil {
-                silence = try? AVAudioPlayer(data: Wav.silence())
-                silence?.numberOfLoops = -1
-            }
-            silence?.play()
+            interrupted = false
+            retryAt = 0
             let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.tick() }
             RunLoop.main.add(t, forMode: .common)
             timer = t
@@ -136,21 +145,36 @@ final class CoachAudio: NSObject, AVAudioPlayerDelegate {
         tones.forEach { $0.stop() }
         tones = []
         silence?.stop()
+        missed = []
         ducked = false
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private func tick() {
         let now = Date().timeIntervalSince1970
+        if !interrupted, silence?.isPlaying != true, now >= retryAt, !resume() { retryAt = now + 2 }
+        let live = !interrupted && silence?.isPlaying == true
         while let e = events.first, e.at <= now {
             events.removeFirst()
-            guard now - e.at <= maxLate else { continue }
-            if let tone = e.tone { beep(tone, count: e.count) }
-            if let clip = e.clip { speak(clip) }
+            if live && now - e.at <= maxLate {
+                if e.key { missed = [] }
+                play(e)
+            } else if e.key {
+                if missed.first?.at != e.at { missed = [] }
+                missed.append(e)
+            }
         }
+        guard live else { return }
+        missed.forEach(play)
+        missed = []
         tones.removeAll { !$0.isPlaying }
         guard voice == nil, tones.isEmpty, now - quietSince > 0.4 else { return }
         if events.isEmpty { stop() } else if ducked { unduck() }
+    }
+
+    private func play(_ e: CoachEvent) {
+        if let tone = e.tone { beep(tone, count: e.count) }
+        if let clip = e.clip { speak(clip) }
     }
 
     private func speak(_ clip: String) {
@@ -178,10 +202,25 @@ final class CoachAudio: NSObject, AVAudioPlayerDelegate {
         tones.append(player)
     }
 
-    private func startSession() {
-        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try? session.setActive(true)
+    /// Starts the session and the silent loop, dropping anything cut off when the audio was
+    /// taken away. False while something else (e.g. a call) still has the audio.
+    private func resume() -> Bool {
+        voice?.stop()
+        voice = nil
+        tones.forEach { $0.stop() }
+        tones = []
+        if silence == nil {
+            silence = try? AVAudioPlayer(data: Wav.silence())
+            silence?.numberOfLoops = -1
+        }
+        guard (try? startSession()) != nil else { return false }
+        return silence?.play() == true
+    }
+
+    private func startSession() throws {
         ducked = false
+        try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try session.setActive(true)
     }
 
     private func duck() {
@@ -196,16 +235,45 @@ final class CoachAudio: NSObject, AVAudioPlayerDelegate {
     private func unduck() {
         silence?.pause()
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
-        startSession()
+        try? startSession()
         silence?.play()
     }
 
-    @objc private func interrupted(_ note: Notification) {
+    /// Phone calls, alarms, Siri. Cues that come due meanwhile are held back (see tick()).
+    @objc private func interruption(_ note: Notification) {
         guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-              AVAudioSession.InterruptionType(rawValue: raw) == .ended, timer != nil else { return }
-        voice = nil
-        startSession()
-        silence?.play()
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        let reason = (note.userInfo?[AVAudioSessionInterruptionReasonKey] as? UInt).flatMap(AVAudioSession.InterruptionReason.init)
+        DispatchQueue.main.async {
+            guard self.timer != nil else { return }
+            // A late notice that the app was suspended isn't a call: tick() just restarts the audio.
+            if type == .began && reason != .appWasSuspended {
+                self.interrupted = true
+            } else if type == .ended {
+                self.interrupted = false
+                self.retryAt = 0
+                self.tick()
+            }
+        }
+    }
+
+    /// iOS doesn't always send the end of an interruption, so try again when the app is opened.
+    @objc private func becameActive() {
+        guard timer != nil, interrupted || silence?.isPlaying != true else { return }
+        interrupted = false
+        retryAt = 0
+        tick()
+    }
+
+    /// The system audio server restarted: every player is dead, so tick() builds them again.
+    @objc private func mediaReset() {
+        DispatchQueue.main.async {
+            self.silence = nil
+            self.voice = nil
+            self.tones = []
+            self.ducked = false
+            self.retryAt = 0
+        }
     }
 }
 

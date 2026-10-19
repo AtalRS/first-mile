@@ -158,10 +158,10 @@ function render(){
 /* guided workout */
 var G=null,tick=null,actx=null;
 /* in the iOS app, native code plays the coach and beeps on a schedule so they keep going with the screen locked */
-var NATIVE=null,SIM=null,REC=null,audEnd=0,DUR={};
+var NATIVE=null,SIM=null,REC=null,KEY=0,audEnd=0,DUR={};
 try{if(window.Capacitor&&Capacitor.isNativePlatform())NATIVE=Capacitor.Plugins.Coach||Capacitor.registerPlugin("Coach")}catch(e){}
 function now(){return SIM?SIM.t:Date.now()}
-function cue(e){e.at=now();(SIM?SIM.ev:REC).push(e)}
+function cue(e){e.at=now();if(KEY)e.key=true;(SIM?SIM.ev:REC).push(e)}
 function beep(f,n){if(SIM||REC){cue({tone:f,count:n});return}if(NATIVE)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
   for(var i=0;i<n;i++){var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);
   var t=actx.currentTime+i*.22;g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.start(t);o.stop(t+.18)}}catch(e){}}
@@ -217,10 +217,17 @@ function wake(){try{if(!NATIVE&&navigator.wakeLock&&!wl&&G&&!G.fin&&document.vis
 function unwake(){try{if(wl)wl.release()}catch(e){}wl=null}
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&G&&!G.fin){step();wake()}});
 function buzz(){if(SIM)return;try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}
+/* the workout in progress is saved, so it carries on if iOS reloads the page or closes the app in the background */
+function keep(){try{if(G&&!G.fin)localStorage.setItem("fm-run",JSON.stringify({G:G,bi:bi,mi:mi}));else localStorage.removeItem("fm-run")}catch(e){}}
+function restore(){var r=null;try{r=JSON.parse(localStorage.getItem("fm-run")||"null")}catch(e){}
+  if(!r||!r.G||!(Date.now()-r.G.last<3*3600e3))return keep();
+  G=r.G;bi=r.bi;mi=r.mi;openGuide();step();if(G&&!G.fin)plan()}
 function start(w,d){
   G={w:w,d:d,segs:build(w,d),cueAt:25,cueN:0,i:0,left:0,paused:false,last:Date.now(),key:w+"-"+d};
-  G.left=G.segs[0].d;document.getElementById("guide").classList.add("on");
+  G.left=G.segs[0].d;
   rec(function(){beep(660,1);say("Hi, I'm your coach. Let's warm up with some gentle movement. "+G.segs[0].l+". "+G.segs[0].tip)});
+  openGuide()}
+function openGuide(){document.getElementById("guide").classList.add("on");
   var gb=document.getElementById("gbar");gb.innerHTML=G.segs.map(function(){return "<i></i>"}).join("");
   controls();updCoach();document.getElementById("gmute").onclick=function(){setCoach(!coachOn)};clearInterval(tick);tick=setInterval(step,250);wake();show()}
 function step(){if(!G||G.paused||G.fin)return;var n=now();G.left-=(n-G.last)/1000;G.last=n;
@@ -229,13 +236,13 @@ function advance(quiet){G.i++;G.lastBeep=0;G.cueAt=12;G.cueN=0;
   if(G.i>=G.segs.length){finish();return}
   var s=G.segs[G.i];G.left=s.d+Math.min(0,G.left);G.last=now();
   if(quiet)return;
-  beep(s.t==="run"?880:440,2);buzz();
+  KEY=1;beep(s.t==="run"?880:440,2);buzz();
   var m=s.t==="stretch"?(s.first?s.first+" ":"")+s.l+". "+s.tip:s.l==="Warm-up walk"?"Now a five minute warm-up walk. Start gently and build to a brisk pace.":s.t==="run"?"Run for "+spoken(s.d)+". Easy pace.":s.l==="Cool-down walk"?"Amazing work. Cool down with a walk, and breathe slowly.":"Walk for "+spoken(s.d)+". Catch your breath.";
   if(s.l==="Final run")m="Final run. "+spoken(s.d)+". Give it everything you've got, you're almost done.";
   if(G.i===Math.floor(G.segs.length/2))m+=" You're halfway through today's workout.";
-  say(m)}
+  say(m);KEY=0}
 function spoken(d){var m=Math.round(d/60*2)/2;return d<120?d+" seconds":(m%1?m:Math.round(m))+" minutes"}
-function show(){var g=document.getElementById("guide"),s=G.segs[G.i];
+function show(){keep();var g=document.getElementById("guide"),s=G.segs[G.i];
   g.className="on "+s.t;
   var ph=document.getElementById("gphase");ph.textContent=s.t==="run"?"Run":s.t==="walk"?"Walk":s.l;ph.style.fontSize=s.t==="stretch"?"38px":"";
   document.getElementById("gtime").textContent=fmt(G.left);
@@ -245,12 +252,12 @@ function show(){var g=document.getElementById("guide"),s=G.segs[G.i];
   var nx=G.segs[G.i+1];document.getElementById("gnext").textContent=nx?"Next: "+nx.l.toLowerCase()+" for "+fmt(nx.d):"Last stretch";
   var bars=document.getElementById("gbar").children;for(var j=0;j<bars.length;j++)bars[j].className=j<G.i?"d":j===G.i?"c":""}
 function controls(){var c=document.getElementById("gctrls");
-  c.innerHTML='<button id="bq">End</button><button id="bp" class="main"><span>Pause</span></button><button id="bs">Skip</button>';
+  c.innerHTML='<button id="bq">End</button><button id="bp" class="main"><span>'+(G.paused?"Resume":"Pause")+'</span></button><button id="bs">Skip</button>';
   document.getElementById("bq").onclick=quit;
   document.getElementById("bs").onclick=function(){rec(advance);if(G&&!G.fin)show()};
-  document.getElementById("bp").onclick=function(){G.paused=!G.paused;G.last=Date.now();if(G.paused)hush();plan();this.firstChild.textContent=G.paused?"Resume":"Pause"}}
-function finish(){G.fin=true;beep(880,3);buzz();say("Workout complete. You did it, and I'm so proud of you. Take a deep breath in, and slowly out. Grab some water, you earned it.");
-  if(SIM)return;clearInterval(tick);unwake();
+  document.getElementById("bp").onclick=function(){G.paused=!G.paused;G.last=Date.now();if(G.paused)hush();plan();keep();this.firstChild.textContent=G.paused?"Resume":"Pause"}}
+function finish(){G.fin=true;KEY=1;beep(880,3);buzz();say("Workout complete. You did it, and I'm so proud of you. Take a deep breath in, and slowly out. Grab some water, you earned it.");KEY=0;
+  if(SIM)return;clearInterval(tick);unwake();keep();
   var g=document.getElementById("guide");g.className="on fin";
   document.getElementById("gbar").innerHTML="";
   document.getElementById("gphase").textContent="Done";
@@ -264,9 +271,9 @@ function finish(){G.fin=true;beep(880,3);buzz();say("Workout complete. You did i
   document.getElementById("bd").onclick=function(){done[G.key]=1;save();
     if(count()>0){var all=true;for(var d=0;d<3;d++)if(!done[G.w+"-"+d])all=false;if(all&&G.w<8)cur=G.w+1}
     quit()}}
-function quit(){clearInterval(tick);hush();unwake();if(NATIVE)NATIVE.stop();G=null;
+function quit(){clearInterval(tick);hush();unwake();if(NATIVE)NATIVE.stop();G=null;keep();
   document.getElementById("guide").className="";render()}
-render();updCoach();
+render();updCoach();restore();
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
 </script>
 </body>
