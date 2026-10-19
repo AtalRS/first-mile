@@ -3,7 +3,7 @@
 A guided 9-week run/walk plan (Couch to 5K style) as an installable web app.
 
 - `index.html` – the whole app (markup, styles, script)
-- `coach/` – Coach Hannah's voice clips (63 MP3s, generated with Kokoro TTS, voice `af_heart`)
+- `coach/` – Coach Hannah's voice clips (120 MP3s, generated with Kokoro TTS, voice `af_heart`, by `scripts/make_clips.py`)
 - `icons/` – Home Screen icons, plus `app-store-icon-1024.png` for the App Store. All are rendered from `icons/icon.svg`: edit it, then run `swift scripts/make_icons.swift`
 - `manifest.json`, `sw.js` – make it installable and usable offline
 
@@ -19,7 +19,7 @@ flowchart TB
         plan["9-week plan<br/>27 run/walk workouts"]
         session["Guided workout<br/>Warm-up → intervals → cool-down"]
         controls["Timer, progress ring,<br/>pause / skip / end"]
-        coach["Voice coach<br/>63 bundled audio clips"]
+        coach["Voice coach<br/>120 bundled audio clips"]
         cues["Audio cues and vibration"]
         progress[("Workout completion<br/>localStorage")]
         manifest["Manifest and icons"]
@@ -63,7 +63,7 @@ Then pick your iPhone in Xcode and press Run (set your Apple ID team under Signi
 
 ## Notes
 
-- Every line the coach speaks must have a clip listed in the `CLIP` map in `index.html`. New or reworded lines need new recordings.
+- Every line the coach speaks must have a clip listed in the `CLIP` map in `index.html`. New or reworded lines need new recordings: add them to `CLIP` (file name is the first 10 hex characters of the line's MD5), then run `python3 scripts/make_clips.py` with Kokoro installed (Python 3.10+, `pip install kokoro soundfile`).
 - Run `python3 scripts/check_clips.py` to confirm every clip is on disk, in `CLIP`, and cached in `sw.js`.
 - After changing any file, bump `CACHE` in `sw.js` so phones pick up the update.
 - Host on any static host (GitHub Pages, Netlify, Cloudflare Pages).
